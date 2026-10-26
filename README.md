@@ -50,6 +50,13 @@ A modern project management platform with workspace-based collaboration, task tr
 
 ## 🚀 Getting Started
 
+From the repository root, use these shortcuts to run the client or server:
+
+```bash
+npm run dev
+npm run server
+```
+
 ### 1. Clone the repository
 
 ```bash
@@ -59,23 +66,25 @@ cd proejct_management
 
 ### 2. Set up environment variables
 
-Create a `.env` file in `server/` with at least the following values:
+Copy `server/.env.example` to `server/.env`, then provide values for every key:
 
 ```env
 DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE"
+CLERK_SECRET_KEY=sk_test_your_clerk_secret_key
 SMTP_USER=your-smtp-user
 SMTP_PASS=your-smtp-password
 SENDER_EMAIL=your@email.com
 PORT=5000
 ```
 
-Create a `.env` file in `client/` with the backend base URL:
+Copy `client/.env.example` to `client/.env`, then provide the client settings:
 
 ```env
 VITE_BASEURL=http://localhost:5000
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_your_clerk_publishable_key
 ```
 
-> If you are using Clerk, also configure the required Clerk environment variables in the client and server as needed.
+`CLERK_SECRET_KEY`, `SMTP_PASS`, and `DATABASE_URL` are private values and must remain in `server/.env` or your deployment provider's server-side environment settings. Only variables prefixed with `VITE_` are exposed to the browser.
 
 ### 3. Install dependencies
 
