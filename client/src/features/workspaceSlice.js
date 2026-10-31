@@ -3,15 +3,17 @@ import api from "../../configs/api";
 
 export const fetchWorkspaces = createAsyncThunk(
   "workspace/fetchWorkspaces",
-  async ({ getToken }) => {
+  async ({ getToken }, { rejectWithValue }) => {
     try {
+      const token = await getToken();
       const { data } = await api.get("/api/workspaces", {
-        headers: { Authorization: `Bearer ${await getToken()}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
       return data.workspaces || [];
     } catch (error) {
-      console.log(error?.response?.data?.message || error.message);
-      return [];
+      return rejectWithValue(
+        error?.response?.data?.message || error.message || "Unable to load workspaces"
+      );
     }
   }
 );
@@ -20,6 +22,7 @@ const initialState = {
     workspaces: [],
     currentWorkspace: null,
     loading: false,
+    error: null,
 };
 
 const workspaceSlice = createSlice({
@@ -123,6 +126,7 @@ const workspaceSlice = createSlice({
     extraReducers: (builder) => {
     builder.addCase(fetchWorkspaces.pending, (state) => {
       state.loading = true;
+      state.error = null;
     });
 
     builder.addCase(fetchWorkspaces.fulfilled, (state, action) => {
@@ -148,10 +152,12 @@ const workspaceSlice = createSlice({
       }
 
       state.loading = false;
+      state.error = null;
     });
 
-    builder.addCase(fetchWorkspaces.rejected, (state) => {
+    builder.addCase(fetchWorkspaces.rejected, (state, action) => {
       state.loading = false;
+      state.error = action.payload || action.error.message || "Unable to load workspaces";
     });
   },
 });

@@ -1,9 +1,71 @@
 import prisma from "../configs/prisma.js";
+import { clerkClient } from "@clerk/express";
+
+const syncClerkUser = async (userId) => {
+  const clerkUser = await clerkClient.users.getUser(userId);
+  const primaryEmail = clerkUser.emailAddresses.find(
+    (email) => email.id === clerkUser.primaryEmailAddressId
+  );
+  const email = primaryEmail?.emailAddress || clerkUser.emailAddresses[0]?.emailAddress;
+
+  if (!email) {
+    throw new Error(`Clerk user ${userId} does not have an email address`);
+  }
+
+  const name = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") || email;
+
+  return prisma.user.upsert({
+    where: { id: userId },
+    update: { email, name, image: clerkUser.imageUrl },
+    create: { id: userId, email, name, image: clerkUser.imageUrl },
+  });
+};
 
 // Get all workspaces for user
 export const getUserWorkspaces = async (req, res) => {
   try {
-    const { userId } = await req.auth();
+    const { userId, orgId, orgRole } = await req.auth();
+
+    if (orgId) {
+      const organization = await clerkClient.organizations.getOrganization({
+        organizationId: orgId,
+      });
+      const ownerId = organization.createdBy || userId;
+
+      await syncClerkUser(ownerId);
+      await syncClerkUser(userId);
+
+      await prisma.workspace.upsert({
+        where: { id: organization.id },
+        update: {
+          name: organization.name,
+          slug: organization.slug,
+          image_url: organization.imageUrl,
+        },
+        create: {
+          id: organization.id,
+          name: organization.name,
+          slug: organization.slug,
+          ownerId,
+          image_url: organization.imageUrl,
+        },
+      });
+
+      await prisma.workspaceMember.upsert({
+        where: {
+          userId_workspaceId: { userId, workspaceId: organization.id },
+        },
+        update: {
+          role: orgRole === "org:admin" ? "ADMIN" : "MEMBER",
+        },
+        create: {
+          userId,
+          workspaceId: organization.id,
+          role: orgRole === "org:admin" ? "ADMIN" : "MEMBER",
+        },
+      });
+    }
+
     const workspaces = await prisma.workspace.findMany({
       where: {
         members: { some: { userId: userId } },

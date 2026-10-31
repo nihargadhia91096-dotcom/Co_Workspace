@@ -5,14 +5,21 @@ import { Outlet } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { loadTheme } from "../features/themeSlice";
 import { Loader2Icon } from "lucide-react";
-import { useUser, SignIn, CreateOrganization, useAuth } from "@clerk/react";
+import {
+  useUser,
+  useOrganization,
+  SignIn,
+  CreateOrganization,
+  useAuth,
+} from "@clerk/react";
 import { fetchWorkspaces } from "../features/workspaceSlice";
 
 const Layout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const { loading, workspaces } = useSelector((state) => state.workspace);
+  const { loading, workspaces, error } = useSelector((state) => state.workspace);
   const dispatch = useDispatch();
   const { user, isLoaded } = useUser();
+  const { organization } = useOrganization();
   const { getToken } = useAuth();
 
   // Initial load of theme
@@ -22,10 +29,18 @@ const Layout = () => {
 
   // Initial load of workspaces
   useEffect(() => {
-    if (isLoaded && user && workspaces.length === 0) {
+    if (isLoaded && user?.id) {
       dispatch(fetchWorkspaces({ getToken }));
     }
-  }, [dispatch, user, isLoaded, workspaces.length, getToken]);
+  }, [dispatch, user?.id, isLoaded, organization?.id, getToken]);
+
+  if (!isLoaded || loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-white dark:bg-zinc-950">
+        <Loader2Icon className="size-7 text-blue-500 animate-spin" />
+      </div>
+    );
+  }
 
   if (!user) {
     return (
@@ -34,6 +49,23 @@ const Layout = () => {
       </div>
     );
   }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col justify-center items-center gap-4 bg-white dark:bg-zinc-950">
+        <p className="text-sm text-red-600 dark:text-red-400">
+          Could not load your workspaces: {error}
+        </p>
+        <button
+          className="rounded bg-blue-600 px-4 py-2 text-sm text-white"
+          onClick={() => dispatch(fetchWorkspaces({ getToken }))}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   if (user && workspaces.length === 0) {
     return (
       <div className="min-h-screen flex justify-center items-center bg-white dark:bg-zinc-950">
@@ -41,13 +73,6 @@ const Layout = () => {
       </div>
     );
   }
-  if (loading)
-    return (
-      <div className="flex items-center justify-center h-screen bg-white dark:bg-zinc-950">
-        <Loader2Icon className="size-7 text-blue-500 animate-spin" />
-      </div>
-    );
-
   return (
     <div className="flex bg-white dark:bg-zinc-950 text-gray-900 dark:text-slate-100">
       <Sidebar
