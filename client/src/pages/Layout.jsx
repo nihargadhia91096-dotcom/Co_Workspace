@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import { Outlet } from "react-router-dom";
@@ -21,6 +21,7 @@ const Layout = () => {
   const { user, isLoaded } = useUser();
   const { organization } = useOrganization();
   const { getToken } = useAuth();
+  const workspaceFetchKey = useRef("");
 
   // Initial load of theme
   useEffect(() => {
@@ -29,10 +30,12 @@ const Layout = () => {
 
   // Initial load of workspaces
   useEffect(() => {
-    if (isLoaded && user?.id) {
+    const fetchKey = `${user?.id || ""}:${organization?.id || ""}`;
+    if (isLoaded && user?.id && workspaceFetchKey.current !== fetchKey) {
+      workspaceFetchKey.current = fetchKey;
       dispatch(fetchWorkspaces({ getToken }));
     }
-  }, [dispatch, user?.id, isLoaded, organization?.id, getToken]);
+  }, [dispatch, user?.id, isLoaded, organization?.id]);
 
   if (!isLoaded || loading) {
     return (
